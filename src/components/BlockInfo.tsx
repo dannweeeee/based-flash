@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, memo } from "react";
+import { useEffect, useState, useMemo, useRef, memo, useCallback } from "react";
 import { BlockData } from "@/hooks/useBlockData";
 
 interface BlockInfoProps {
@@ -62,34 +62,61 @@ const BlockContent = memo(({ blockData }: { blockData: BlockData }) => {
 
 BlockContent.displayName = "BlockContent";
 
-// Progress bar component that uses refs to avoid re-renders
-const ProgressBar = memo(({ isFlashblock, refreshInterval }: { 
+// Progress bar component with proper refs and 200ms updates
+const ProgressBar = memo(({ 
+  isFlashblock, 
+  refreshInterval, 
+  timeSinceLastBlock,
+  isPaused
+}: { 
   isFlashblock: boolean,
-  refreshInterval: number
+  refreshInterval: number,
+  timeSinceLastBlock: number,
+  isPaused: boolean
 }) => {
-  const progressBarRef = useRef<HTMLDivElement>(null);
-  const timerTextRef = useRef<HTMLSpanElement>(null);
+  // Calculate progress percentage with smoother transition
+  const progressPercentage = Math.min(
+    (timeSinceLastBlock / refreshInterval) * 100, 
+    100
+  );
+  
+  // Calculate time left in seconds with one decimal place
+  const timeLeft = Math.max(
+    0,
+    Math.floor((refreshInterval - timeSinceLastBlock) / 100) / 10
+  ).toFixed(1);
   
   return (
     <div className="mt-4">
       <div className="flex justify-between text-sm mb-1">
-        <span className="text-xs text-gray-500">Next block in</span>
+        <span className="text-xs text-gray-500">
+          {isPaused ? "Updates paused" : "Next block in"}
+        </span>
         <span
-          ref={timerTextRef}
           className={`text-sm font-medium ${
             isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
           }`}
         >
-          0.0s
+          {isPaused ? (
+            <span className="text-yellow-600 dark:text-yellow-400">Paused</span>
+          ) : (
+            `${timeLeft}s`
+          )}
         </span>
       </div>
       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
         <div
-          ref={progressBarRef}
           className={`${
-            isFlashblock ? "bg-blue-600" : "bg-gray-600"
-          } h-2.5 rounded-full transition-all duration-100 ease-linear`}
-          style={{ width: "0%" }}
+            isPaused 
+              ? "bg-yellow-500" 
+              : isFlashblock 
+                ? "bg-blue-600" 
+                : "bg-gray-600"
+          } h-2.5 rounded-full`}
+          style={{ 
+            width: `${progressPercentage}%`,
+            transition: 'width 180ms linear' // Smooth transition between 200ms updates
+          }}
         ></div>
       </div>
     </div>
@@ -108,67 +135,52 @@ function BlockInfo({
 }: BlockInfoProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [blockCount, setBlockCount] = useState<number>(0);
+  const [timeSinceLastBlock, setTimeSinceLastBlock] = useState<number>(0);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   
-  // Use refs instead of state for values that change frequently but don't need to trigger re-renders
+  // Use refs for values that don't need to trigger re-renders
   const prevBlockNumberRef = useRef<bigint | undefined>(undefined);
-  const timeSinceLastBlockRef = useRef<number>(0);
-  const progressBarRef = useRef<HTMLDivElement>(null);
-  const timerTextRef = useRef<HTMLSpanElement>(null);
+  const isPausedRef = useRef<boolean>(false);
+  const lastTimestampRef = useRef<number>(performance.now());
+  const animationFrameIdRef = useRef<number | null>(null);
 
   // Memoize computed values
   const isFlashblock = useMemo(() => refreshInterval < 1000, [refreshInterval]);
 
+  // Update isPausedRef when isPaused changes
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  // No scroll event handler as per user request
+
   // Update block data without causing full re-renders
   useEffect(() => {
-    if (blockData && blockData.number !== prevBlockNumberRef.current) {
+    if (!isPausedRef.current && blockData && blockData.number !== prevBlockNumberRef.current) {
       prevBlockNumberRef.current = blockData.number;
       setLastUpdated(new Date());
-      timeSinceLastBlockRef.current = 0;
+      setTimeSinceLastBlock(0);
       setBlockCount((prev) => prev + 1);
     }
   }, [blockData]);
 
-  // Timer effect using requestAnimationFrame for smoother updates
+  // Timer effect using setInterval for 200ms updates
   useEffect(() => {
-    let animationFrameId: number;
-    let lastTimestamp: number = performance.now();
-    
-    const updateTimer = (timestamp: number) => {
-      const elapsed = timestamp - lastTimestamp;
-      if (elapsed >= 100) { // Update roughly every 100ms
-        lastTimestamp = timestamp;
-        timeSinceLastBlockRef.current += 100;
-        
-        // Find the progress bar element in the DOM
-        const progressBar = document.querySelector(`.progress-bar-${title.replace(/\s+/g, '-')}`);
-        if (progressBar) {
-          const progressPercentage = Math.min(
-            (timeSinceLastBlockRef.current / refreshInterval) * 100, 
-            100
-          );
-          (progressBar as HTMLElement).style.width = `${progressPercentage}%`;
-        }
-        
-        // Find the timer text element in the DOM
-        const timerText = document.querySelector(`.timer-text-${title.replace(/\s+/g, '-')}`);
-        if (timerText) {
-          const timeLeft = Math.max(
-            0,
-            Math.floor((refreshInterval - timeSinceLastBlockRef.current) / 100) / 10
-          ).toFixed(1);
-          timerText.textContent = `${timeLeft}s`;
-        }
+    const intervalId = setInterval(() => {
+      if (!isPausedRef.current) {
+        setTimeSinceLastBlock(prev => prev + 200);
       }
-      
-      animationFrameId = requestAnimationFrame(updateTimer);
-    };
-    
-    animationFrameId = requestAnimationFrame(updateTimer);
+    }, 200);
     
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      clearInterval(intervalId);
     };
-  }, [refreshInterval, title]);
+  }, []);
+
+  // Toggle pause state
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev);
+  }, []);
 
   // Memoize the header content
   const headerContent = useMemo(() => (
@@ -185,17 +197,29 @@ function BlockInfo({
           {blockCount > 0 && `${blockCount} blocks observed`}
         </div>
       </div>
-      <div
-        className={`text-sm ${
-          isFlashblock
-            ? "text-blue-600 dark:text-blue-400 font-semibold"
-            : "text-gray-500"
-        }`}
-      >
-        {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={togglePause}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            isPaused
+              ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+          }`}
+        >
+          {isPaused ? "Resume" : "Pause"}
+        </button>
+        <div
+          className={`text-sm ${
+            isFlashblock
+              ? "text-blue-600 dark:text-blue-400 font-semibold"
+              : "text-gray-500"
+          }`}
+        >
+          {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
+        </div>
       </div>
     </div>
-  ), [title, isFlashblock, blockCount, blockData]);
+  ), [title, isFlashblock, blockCount, blockData, isPaused, togglePause]);
 
   return (
     <div
@@ -239,26 +263,12 @@ function BlockInfo({
         ) : blockData ? (
           <>
             <BlockContent blockData={blockData} />
-            <div className="mt-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-xs text-gray-500">Next block in</span>
-                <span
-                  className={`timer-text-${title.replace(/\s+/g, '-')} text-sm font-medium ${
-                    isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
-                  }`}
-                >
-                  {(refreshInterval / 1000).toFixed(1)}s
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className={`progress-bar-${title.replace(/\s+/g, '-')} ${
-                    isFlashblock ? "bg-blue-600" : "bg-gray-600"
-                  } h-2.5 rounded-full transition-all duration-100 ease-linear`}
-                  style={{ width: "0%" }}
-                ></div>
-              </div>
-            </div>
+            <ProgressBar 
+              isFlashblock={isFlashblock} 
+              refreshInterval={refreshInterval} 
+              timeSinceLastBlock={timeSinceLastBlock}
+              isPaused={isPaused}
+            />
           </>
         ) : (
           <div className="text-center p-4">No data available</div>
