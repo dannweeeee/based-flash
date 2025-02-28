@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRegularBlockData, useFlashblockData } from "../hooks/useBlockData";
 import BlockInfo from "../components/BlockInfo";
 import TransactionSender from "../components/TransactionSender";
+import { Github } from "lucide-react";
 
 export default function Home() {
   // Use state to track if we're on the client side
@@ -83,7 +84,7 @@ export default function Home() {
             {isClient ? (
               <>
                 <BlockInfo
-                  title="Regular Blocks (2s)"
+                  title="Regular Blocks"
                   blockData={regularBlockData}
                   isLoading={isRegularLoading}
                   error={regularError as Error}
@@ -91,7 +92,7 @@ export default function Home() {
                 />
 
                 <BlockInfo
-                  title="Flashblocks (200ms)"
+                  title="Flashblocks"
                   blockData={flashblockData}
                   isLoading={isFlashblockLoading}
                   error={flashblockError as Error}
@@ -147,32 +148,25 @@ export default function Home() {
 
       <footer className="max-w-6xl mx-auto mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400">
         <p className="mb-2">
-          Built for ETH Denver 2025 - Base Flashblocks Builder Side Quest
+          Built by{" "}
+          <a
+            href="https://x.com/dannweeeee"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
+          >
+            @dannweeeee
+          </a>{" "}
+          | Base Flashblocks Builder Side Quest
         </p>
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-4">
           <a
-            href="https://base.org/flashblocks"
+            href="https://github.com/dannweeeee/flash-base"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-blue-600 dark:hover:text-blue-400"
+            className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
           >
-            Flashblocks Docs
-          </a>
-          <a
-            href="https://github.com/base-org/flashblocks"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-blue-600 dark:hover:text-blue-400"
-          >
-            GitHub
-          </a>
-          <a
-            href="https://twitter.com/buildonbase"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-blue-600 dark:hover:text-blue-400"
-          >
-            Twitter
+            <Github />
           </a>
         </div>
       </footer>
