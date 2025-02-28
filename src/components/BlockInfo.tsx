@@ -62,40 +62,34 @@ const BlockContent = memo(({ blockData }: { blockData: BlockData }) => {
 
 BlockContent.displayName = "BlockContent";
 
-// Memoized progress bar component
-const ProgressBar = memo(({ 
-  progressPercentage, 
-  isFlashblock, 
-  refreshInterval, 
-  timeSinceLastBlock 
-}: { 
-  progressPercentage: number, 
+// Progress bar component that uses refs to avoid re-renders
+const ProgressBar = memo(({ isFlashblock, refreshInterval }: { 
   isFlashblock: boolean,
-  refreshInterval: number,
-  timeSinceLastBlock: number
+  refreshInterval: number
 }) => {
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const timerTextRef = useRef<HTMLSpanElement>(null);
+  
   return (
     <div className="mt-4">
       <div className="flex justify-between text-sm mb-1">
         <span className="text-xs text-gray-500">Next block in</span>
         <span
+          ref={timerTextRef}
           className={`text-sm font-medium ${
             isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
           }`}
         >
-          {Math.max(
-            0,
-            Math.floor((refreshInterval - timeSinceLastBlock) / 100) / 10
-          ).toFixed(1)}
-          s
+          0.0s
         </span>
       </div>
       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
         <div
+          ref={progressBarRef}
           className={`${
             isFlashblock ? "bg-blue-600" : "bg-gray-600"
           } h-2.5 rounded-full transition-all duration-100 ease-linear`}
-          style={{ width: `${progressPercentage}%` }}
+          style={{ width: "0%" }}
         ></div>
       </div>
     </div>
@@ -113,38 +107,68 @@ function BlockInfo({
   className = "",
 }: BlockInfoProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [timeSinceLastBlock, setTimeSinceLastBlock] = useState<number>(0);
   const [blockCount, setBlockCount] = useState<number>(0);
-
-  // Use ref instead of state for previous block number to avoid re-renders
+  
+  // Use refs instead of state for values that change frequently but don't need to trigger re-renders
   const prevBlockNumberRef = useRef<bigint | undefined>(undefined);
+  const timeSinceLastBlockRef = useRef<number>(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const timerTextRef = useRef<HTMLSpanElement>(null);
 
   // Memoize computed values
   const isFlashblock = useMemo(() => refreshInterval < 1000, [refreshInterval]);
-  
-  const progressPercentage = useMemo(() => 
-    Math.min((timeSinceLastBlock / refreshInterval) * 100, 100),
-    [timeSinceLastBlock, refreshInterval]
-  );
 
   // Update block data without causing full re-renders
   useEffect(() => {
     if (blockData && blockData.number !== prevBlockNumberRef.current) {
       prevBlockNumberRef.current = blockData.number;
       setLastUpdated(new Date());
-      setTimeSinceLastBlock(0);
+      timeSinceLastBlockRef.current = 0;
       setBlockCount((prev) => prev + 1);
     }
   }, [blockData]);
 
-  // Timer effect
+  // Timer effect using requestAnimationFrame for smoother updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeSinceLastBlock((prev) => prev + 100);
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
+    let animationFrameId: number;
+    let lastTimestamp: number = performance.now();
+    
+    const updateTimer = (timestamp: number) => {
+      const elapsed = timestamp - lastTimestamp;
+      if (elapsed >= 100) { // Update roughly every 100ms
+        lastTimestamp = timestamp;
+        timeSinceLastBlockRef.current += 100;
+        
+        // Find the progress bar element in the DOM
+        const progressBar = document.querySelector(`.progress-bar-${title.replace(/\s+/g, '-')}`);
+        if (progressBar) {
+          const progressPercentage = Math.min(
+            (timeSinceLastBlockRef.current / refreshInterval) * 100, 
+            100
+          );
+          (progressBar as HTMLElement).style.width = `${progressPercentage}%`;
+        }
+        
+        // Find the timer text element in the DOM
+        const timerText = document.querySelector(`.timer-text-${title.replace(/\s+/g, '-')}`);
+        if (timerText) {
+          const timeLeft = Math.max(
+            0,
+            Math.floor((refreshInterval - timeSinceLastBlockRef.current) / 100) / 10
+          ).toFixed(1);
+          timerText.textContent = `${timeLeft}s`;
+        }
+      }
+      
+      animationFrameId = requestAnimationFrame(updateTimer);
+    };
+    
+    animationFrameId = requestAnimationFrame(updateTimer);
+    
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [refreshInterval, title]);
 
   // Memoize the header content
   const headerContent = useMemo(() => (
@@ -215,12 +239,26 @@ function BlockInfo({
         ) : blockData ? (
           <>
             <BlockContent blockData={blockData} />
-            <ProgressBar 
-              progressPercentage={progressPercentage} 
-              isFlashblock={isFlashblock} 
-              refreshInterval={refreshInterval}
-              timeSinceLastBlock={timeSinceLastBlock}
-            />
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-xs text-gray-500">Next block in</span>
+                <span
+                  className={`timer-text-${title.replace(/\s+/g, '-')} text-sm font-medium ${
+                    isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+                  }`}
+                >
+                  {(refreshInterval / 1000).toFixed(1)}s
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className={`progress-bar-${title.replace(/\s+/g, '-')} ${
+                    isFlashblock ? "bg-blue-600" : "bg-gray-600"
+                  } h-2.5 rounded-full transition-all duration-100 ease-linear`}
+                  style={{ width: "0%" }}
+                ></div>
+              </div>
+            </div>
           </>
         ) : (
           <div className="text-center p-4">No data available</div>
