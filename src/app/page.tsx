@@ -144,28 +144,40 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="max-w-6xl mx-auto mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400">
-        <p className="mb-2">
-          Built by{" "}
-          <a
-            href="https://x.com/dannweeeee"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
-          >
-            @dannweeeee
-          </a>{" "}
-          | Base Flashblocks Builder Side Quest
-        </p>
-        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-4">
-          <a
-            href="https://github.com/dannweeeee/based-flash"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-          >
-            <Github />
-          </a>
+      <footer className="max-w-6xl mx-auto mt-12 pt-8 pb-6 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg shadow-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center justify-center mb-6">
+            <p className="text-sm md:text-base font-medium mb-4 text-center">
+              <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent font-bold">
+                Base Flashblocks
+              </span>{" "}
+              Builder Side Quest
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <a
+                href="https://github.com/dannweeeee/based-flash"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                aria-label="GitHub Repository"
+              >
+                <Github className="h-5 w-5 mr-1" />
+                <span className="text-sm">GitHub</span>
+              </a>
+              <a
+                href="https://x.com/dannweeeee"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                aria-label="Twitter Profile"
+              >
+                <span className="text-sm">@dannweeeee</span>
+              </a>
+            </div>
+          </div>
+          <div className="text-xs text-center text-gray-500 dark:text-gray-500">
+            © {new Date().getFullYear()} • Built with ❤️ for the Base ecosystem
+          </div>
         </div>
       </footer>
     </div>
