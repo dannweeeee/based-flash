@@ -9,7 +9,7 @@ import {
   http,
 } from "viem";
 import { baseSepolia } from "wagmi/chains";
-import { NFT_CONTRACT_ADDRESS } from "../providers";
+import { NFT_CONTRACT_ADDRESS } from "@/components/providers";
 
 // Simple NFT contract ABI for minting
 const NFT_ABI = [

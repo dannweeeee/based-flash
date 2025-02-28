@@ -78,11 +78,12 @@ export function useFlashblockWebSocket() {
       setErrorMessage(null);
 
       try {
-        websocketClient = new WebSocket("wss://sepolia.flashblocks.base.org/ws");
+        websocketClient = new WebSocket(
+          "wss://sepolia.flashblocks.base.org/ws"
+        );
 
         websocketClient.onopen = () => {
           setConnectionStatus("connected");
-          console.log("WebSocket connection established");
         };
 
         websocketClient.onmessage = (event) => {
@@ -92,7 +93,7 @@ export function useFlashblockWebSocket() {
           if (event.data instanceof Blob) {
             // Record the exact time we received this block
             const blockReceivedTime = Date.now();
-            
+
             const reader = new FileReader();
             reader.onload = (event) => {
               // Store the raw data for processing
@@ -106,16 +107,15 @@ export function useFlashblockWebSocket() {
 
               try {
                 const data = JSON.parse(rawData) as FlashBlockData;
-                
+
                 // Add the received time to the block data for accurate timing
                 const enhancedData = {
                   ...data,
-                  _receivedTime: blockReceivedTime
+                  _receivedTime: blockReceivedTime,
                 };
 
                 // Store genesis blocks for reference
                 if (data.index === 0) {
-                  console.log("Processing genesis block");
                   setLatestBlock(enhancedData);
                 } else {
                   setLatestBlock(enhancedData);
@@ -136,10 +136,9 @@ export function useFlashblockWebSocket() {
                   // Limit array size to prevent memory issues
                   return newBlocks.slice(0, 20);
                 });
-                
+
                 // Process transactions in this block immediately
                 processBlockTransactions(enhancedData, blockReceivedTime);
-                
               } catch (error) {
                 console.error("Error parsing WebSocket data:", error);
               }
@@ -192,57 +191,68 @@ export function useFlashblockWebSocket() {
   }, []);
 
   // Keep a map of transaction hashes to their inclusion times for faster lookups
-  const [txInclusionMap, setTxInclusionMap] = useState<Record<string, {
-    blockNumber: number;
-    timestamp: number;
-    inclusionTime: number;
-  }>>({});
-  
+  const [txInclusionMap, setTxInclusionMap] = useState<
+    Record<
+      string,
+      {
+        blockNumber: number;
+        timestamp: number;
+        inclusionTime: number;
+      }
+    >
+  >({});
+
   // Process transactions in a block and update the inclusion map
-  const processBlockTransactions = (block: FlashBlockData & { _receivedTime?: number }, receivedTime: number) => {
+  const processBlockTransactions = (
+    block: FlashBlockData & { _receivedTime?: number },
+    receivedTime: number
+  ) => {
     if (!block.diff.transactions.length) return;
-    
+
     // Use the block's received time or current time
     const blockReceivedTime = block._receivedTime || receivedTime;
-    
+
     // Get the block timestamp
-    const blockTimestamp = block.base?.timestamp 
-      ? parseInt(block.base.timestamp, 16) * 1000 
+    const blockTimestamp = block.base?.timestamp
+      ? parseInt(block.base.timestamp, 16) * 1000
       : blockReceivedTime;
-    
+
     // Process each transaction
-    const newTxs: Record<string, {
-      blockNumber: number;
-      timestamp: number;
-      inclusionTime: number;
-    }> = {};
-    
-    block.diff.transactions.forEach(txHash => {
+    const newTxs: Record<
+      string,
+      {
+        blockNumber: number;
+        timestamp: number;
+        inclusionTime: number;
+      }
+    > = {};
+
+    block.diff.transactions.forEach((txHash) => {
       // Only add if we haven't seen this transaction before
       if (!txInclusionMap[txHash]) {
         newTxs[txHash] = {
           blockNumber: block.metadata.block_number,
           timestamp: blockTimestamp,
-          inclusionTime: blockReceivedTime
+          inclusionTime: blockReceivedTime,
         };
-        
-        console.log(`Transaction ${txHash.substring(0, 10)}... included in block ${block.metadata.block_number}`);
       }
     });
-    
+
     // If we have new transactions, update the map
     if (Object.keys(newTxs).length > 0) {
-      setTxInclusionMap(prev => ({
+      setTxInclusionMap((prev) => ({
         ...prev,
-        ...newTxs
+        ...newTxs,
       }));
     }
   };
 
   // Helper function to find a transaction in the blocks with improved performance
-  const findTransaction = (txHash: string): { 
-    found: boolean; 
-    blockNumber?: number; 
+  const findTransaction = (
+    txHash: string
+  ): {
+    found: boolean;
+    blockNumber?: number;
     timestamp?: number;
     confirmationTime?: number;
   } => {
@@ -252,38 +262,38 @@ export function useFlashblockWebSocket() {
         found: true,
         blockNumber: txInclusionMap[txHash].blockNumber,
         timestamp: txInclusionMap[txHash].timestamp,
-        confirmationTime: txInclusionMap[txHash].inclusionTime
+        confirmationTime: txInclusionMap[txHash].inclusionTime,
       };
     }
-    
+
     // If not in our map, check the blocks directly
     // This is a fallback in case the transaction was included before we started tracking
     for (const block of blocks) {
-      const found = block.diff.transactions.some(tx => tx === txHash);
+      const found = block.diff.transactions.some((tx) => tx === txHash);
       if (found) {
         // Add to our map for future lookups
         const now = Date.now();
-        const blockTimestamp = block.base?.timestamp 
-          ? parseInt(block.base.timestamp, 16) * 1000 
+        const blockTimestamp = block.base?.timestamp
+          ? parseInt(block.base.timestamp, 16) * 1000
           : now;
-          
-        setTxInclusionMap(prev => ({
+
+        setTxInclusionMap((prev) => ({
           ...prev,
           [txHash]: {
             blockNumber: block.metadata.block_number,
             timestamp: blockTimestamp,
-            inclusionTime: now
-          }
+            inclusionTime: now,
+          },
         }));
-        
-        return { 
-          found: true, 
+
+        return {
+          found: true,
           blockNumber: block.metadata.block_number,
-          timestamp: blockTimestamp
+          timestamp: blockTimestamp,
         };
       }
     }
-    
+
     return { found: false };
   };
 
@@ -294,6 +304,6 @@ export function useFlashblockWebSocket() {
     errorMessage,
     pauseUpdates,
     setPauseUpdates,
-    findTransaction
+    findTransaction,
   };
 }

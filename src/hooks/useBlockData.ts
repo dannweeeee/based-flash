@@ -143,8 +143,6 @@ export function useFlashblockData(refreshInterval = 200) {
     queryFn: async (): Promise<BlockData> => {
       // If we have a latestBlock from WebSocket, convert it to our BlockData format
       if (latestBlock) {
-        console.log("Using WebSocket data for flashblock:", latestBlock.metadata.block_number);
-        
         // Convert timestamp from hex to number if available
         const timestamp = latestBlock.base?.timestamp 
           ? BigInt(parseInt(latestBlock.base.timestamp, 16))
