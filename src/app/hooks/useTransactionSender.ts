@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   createWalletClient,
   custom,
@@ -9,31 +9,50 @@ import {
   http,
 } from "viem";
 import { baseSepolia } from "wagmi/chains";
+import { useFlashblockWebSocket } from "./useFlashblockWebSocket";
 
-// Create a custom chain for Base Sepolia Flashblocks
+// Create a custom chain for Base Sepolia Flashblocks with multiple fallback RPC URLs
 const baseSepoliaFlashblocks = {
   ...baseSepolia,
   id: 84532, // Using the same chain ID as Base Sepolia
   name: "Base Sepolia Flashblocks",
   rpcUrls: {
     default: {
-      http: ["https://sepolia-preconf.base.org"],
+      http: [
+        "https://sepolia-preconf.base.org",
+        // Add alternative endpoints if available in the future
+      ],
+      webSocket: ["wss://sepolia.flashblocks.base.org/ws"],
     },
     public: {
-      http: ["https://sepolia-preconf.base.org"],
+      http: [
+        "https://sepolia-preconf.base.org",
+        // Add alternative endpoints if available in the future
+      ],
+      webSocket: ["wss://sepolia.flashblocks.base.org/ws"],
     },
   },
+};
+
+// Create a more resilient transport with retries and timeout
+const createResilientTransport = (url: string) => {
+  return http(url, {
+    timeout: 10000, // 10 seconds
+    retryCount: 3,
+    retryDelay: 1000, // 1 second between retries
+  });
 };
 
 // Create clients for both networks
 const regularPublicClient = createPublicClient({
   chain: baseSepolia,
-  transport: http("https://sepolia.base.org"),
+  transport: createResilientTransport("https://sepolia.base.org"),
 });
 
+// Try to use the HTTP endpoint first, but with better error handling
 const flashblockPublicClient = createPublicClient({
   chain: baseSepoliaFlashblocks,
-  transport: http("https://sepolia-preconf.base.org"),
+  transport: createResilientTransport("https://sepolia-preconf.base.org"),
 });
 
 export interface TransactionResult {
@@ -64,6 +83,16 @@ export function useTransactionSender() {
       blockNumber: null,
       sentTime: null,
     });
+    
+  // Use the WebSocket hook for monitoring flashblock transactions
+  const { 
+    blocks: flashblocks, 
+    connectionStatus: wsStatus,
+    findTransaction 
+  } = useFlashblockWebSocket();
+  
+  // Keep track of whether we've found the transaction in the WebSocket stream
+  const foundInWsRef = useRef(false);
 
   // Monitor transaction inclusion in blocks
   useEffect(() => {
@@ -158,34 +187,96 @@ export function useTransactionSender() {
     return () => clearInterval(checkInterval);
   }, [regularTxResult.hash, regularTxResult.status, regularTxResult.sentTime]);
 
-  // Monitor transaction inclusion in flashblocks
+  // Monitor transaction inclusion in flashblocks using WebSocket
   useEffect(() => {
     if (
       !flashblockTxResult.hash ||
       flashblockTxResult.status !== "pending" ||
-      !flashblockTxResult.sentTime
+      !flashblockTxResult.sentTime ||
+      foundInWsRef.current // Skip if we've already found the transaction
     )
       return;
 
     console.log(
-      "Starting to monitor flashblock transaction:",
+      "Starting to monitor flashblock transaction via WebSocket:",
       flashblockTxResult.hash
     );
 
+    // First try to find the transaction in existing blocks
+    const txInfo = findTransaction(flashblockTxResult.hash);
+    
+    if (txInfo.found) {
+      console.log("Found flashblock transaction in WebSocket blocks:", txInfo);
+      
+      // If we have the actual inclusion time from the WebSocket, use that
+      // Otherwise calculate based on current time
+      let confirmationTime: number;
+      if (txInfo.confirmationTime) {
+        confirmationTime = txInfo.confirmationTime - flashblockTxResult.sentTime!;
+      } else {
+        confirmationTime = Date.now() - flashblockTxResult.sentTime!;
+      }
+      
+      console.log(`Flashblock confirmation time: ${confirmationTime}ms`);
+
+      setFlashblockTxResult((prev) => ({
+        ...prev,
+        status: "success",
+        confirmationTime,
+        blockNumber: BigInt(txInfo.blockNumber || 0),
+      }));
+      
+      foundInWsRef.current = true;
+      return;
+    }
+
+    // If not found in existing blocks, set up an interval to check
+    // This is a fallback in case the WebSocket misses the transaction
     const checkInterval = setInterval(async () => {
-      try {
-        // First check if the transaction is already confirmed
+      // Try to find the transaction in WebSocket blocks
+      const txInfo = findTransaction(flashblockTxResult.hash as string);
+      
+      if (txInfo.found) {
+        console.log("Found flashblock transaction in WebSocket blocks:", txInfo);
+        
+        // If we have the actual inclusion time from the WebSocket, use that
+        // Otherwise calculate based on current time
+        let confirmationTime: number;
+        if (txInfo.confirmationTime) {
+          confirmationTime = txInfo.confirmationTime - flashblockTxResult.sentTime!;
+        } else {
+          confirmationTime = Date.now() - flashblockTxResult.sentTime!;
+        }
+        
+        console.log(`Flashblock confirmation time: ${confirmationTime}ms`);
+
+        setFlashblockTxResult((prev) => ({
+          ...prev,
+          status: "success",
+          confirmationTime,
+          blockNumber: BigInt(txInfo.blockNumber || 0),
+        }));
+        
+        foundInWsRef.current = true;
+        clearInterval(checkInterval);
+        return;
+      }
+      
+      // Fallback to regular client if WebSocket is not connected or we haven't found the tx
+      if (wsStatus !== "connected" || !txInfo.found) {
         try {
           console.log(
-            "Checking flashblock receipt for hash:",
+            "Falling back to regular client for checking flashblock transaction:",
             flashblockTxResult.hash
           );
-          const receipt = await flashblockPublicClient.getTransactionReceipt({
+          
+          // Check if the transaction is confirmed using regular client
+          const receipt = await regularPublicClient.getTransactionReceipt({
             hash: flashblockTxResult.hash as `0x${string}`,
           });
 
           if (receipt) {
-            console.log("Flashblock receipt found:", receipt);
+            console.log("Flashblock receipt found via regular client:", receipt);
             const confirmationTime = Date.now() - flashblockTxResult.sentTime!;
             console.log(`Flashblock confirmation time: ${confirmationTime}ms`);
 
@@ -196,62 +287,31 @@ export function useTransactionSender() {
               blockNumber: receipt.blockNumber,
             }));
 
+            foundInWsRef.current = true;
             clearInterval(checkInterval);
-            return;
-          } else {
-            console.log("No flashblock receipt found yet");
           }
         } catch (error) {
           console.log("Error checking flashblock receipt:", error);
-          // Transaction not confirmed yet, continue checking pending blocks
         }
-
-        // Check pending blocks
-        console.log("Checking flashblock pending block");
-        const block = await flashblockPublicClient.getBlock({
-          blockTag: "pending",
-          includeTransactions: true,
-        });
-
-        console.log(
-          "Flashblock pending block:",
-          block.number ? String(block.number) : "unknown",
-          "with",
-          block.transactions.length,
-          "transactions"
-        );
-
-        const found = block.transactions.some(
-          (tx: any) => tx.hash === flashblockTxResult.hash
-        );
-
-        if (found) {
-          console.log("Found flashblock transaction in pending block");
-          const confirmationTime = Date.now() - flashblockTxResult.sentTime!;
-          console.log(`Flashblock confirmation time: ${confirmationTime}ms`);
-
-          setFlashblockTxResult((prev) => ({
-            ...prev,
-            status: "success",
-            confirmationTime,
-            blockNumber: block.number,
-          }));
-
-          clearInterval(checkInterval);
-        } else {
-          console.log("Flashblock transaction not found in pending block");
-        }
-      } catch (error) {
-        console.error("Error checking flashblock:", error);
       }
-    }, 100); // Check more frequently for flashblocks
+    }, 50); // Check more frequently (50ms instead of 100ms)
 
     return () => clearInterval(checkInterval);
   }, [
     flashblockTxResult.hash,
     flashblockTxResult.status,
     flashblockTxResult.sentTime,
+    flashblocks, // Re-run when new blocks come in
+    findTransaction,
+    wsStatus,
   ]);
+  
+  // Reset the foundInWs ref when a new transaction is sent
+  useEffect(() => {
+    if (flashblockTxResult.status === "pending" && flashblockTxResult.hash) {
+      foundInWsRef.current = false;
+    }
+  }, [flashblockTxResult.hash, flashblockTxResult.status]);
 
   // Send a transaction to the flashblock network
   const sendFlashblockTransaction = async (
@@ -272,12 +332,18 @@ export function useTransactionSender() {
       });
       const account = accounts[0] as `0x${string}`;
 
-      // Create wallet client for flashblock network
+      // Create wallet client for flashblock network with better error handling
       const flashblockWalletClient = createWalletClient({
         account,
         chain: baseSepoliaFlashblocks,
         transport: custom(window.ethereum),
       });
+
+      // Log the RPC URL being used
+      console.log(
+        "Using flashblock RPC URLs:",
+        baseSepoliaFlashblocks.rpcUrls.default.http
+      );
 
       // Reset flashblock transaction result
       setFlashblockTxResult({
@@ -300,23 +366,49 @@ export function useTransactionSender() {
         baseSepoliaFlashblocks.rpcUrls.default.http[0]
       );
 
-      // Send transaction to flashblock network
-      const flashblockTxHash = await flashblockWalletClient.sendTransaction({
-        to: address,
-        value: parseEther(value),
-      });
+      // Record the time before we send the transaction
+      // This will be used to measure network submission time
+      const startTime = Date.now();
+      
+      // Send transaction to flashblock network with error handling
+      let flashblockTxHash;
+      try {
+        flashblockTxHash = await flashblockWalletClient.sendTransaction({
+          to: address,
+          value: parseEther(value),
+        });
+      } catch (error: any) {
+        console.error("Error sending flashblock transaction:", error);
 
-      console.log("Flashblock transaction hash:", flashblockTxHash);
+        // Check if the error is related to the RPC endpoint
+        if (
+          error.message &&
+          (error.message.includes("503") ||
+            error.message.includes("Service Unavailable") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("Network Error"))
+        ) {
+          throw new Error(
+            "Flashblocks RPC endpoint is currently unavailable. Please try again later or contact support if the issue persists."
+          );
+        }
+
+        throw error;
+      }
 
       // Record the time when we got the transaction hash
-      const sentTime = Date.now();
-      console.log("Flashblock transaction sent time:", sentTime);
+      const hashReceivedTime = Date.now();
+      const networkSubmissionTime = hashReceivedTime - startTime;
+      
+      console.log("Flashblock transaction hash:", flashblockTxHash);
+      console.log(`Network submission time: ${networkSubmissionTime}ms`);
+      console.log("Flashblock transaction sent time:", hashReceivedTime);
 
       // Update flashblock transaction result
       setFlashblockTxResult((prev) => ({
         ...prev,
         hash: flashblockTxHash,
-        sentTime,
+        sentTime: hashReceivedTime,
       }));
     } catch (error) {
       setFlashblockTxResult({
@@ -374,23 +466,28 @@ export function useTransactionSender() {
       );
       console.log("Using regular RPC:", baseSepolia.rpcUrls.default.http[0]);
 
+      // Record the time before we send the transaction
+      const startTime = Date.now();
+      
       // Send transaction to regular network
       const regularTxHash = await regularWalletClient.sendTransaction({
         to: address,
         value: parseEther(value),
       });
 
-      console.log("Regular transaction hash:", regularTxHash);
-
       // Record the time when we got the transaction hash
-      const sentTime = Date.now();
-      console.log("Regular transaction sent time:", sentTime);
+      const hashReceivedTime = Date.now();
+      const networkSubmissionTime = hashReceivedTime - startTime;
+      
+      console.log("Regular transaction hash:", regularTxHash);
+      console.log(`Network submission time: ${networkSubmissionTime}ms`);
+      console.log("Regular transaction sent time:", hashReceivedTime);
 
       // Update regular transaction result
       setRegularTxResult((prev) => ({
         ...prev,
         hash: regularTxHash,
-        sentTime,
+        sentTime: hashReceivedTime,
       }));
     } catch (error) {
       setRegularTxResult({
