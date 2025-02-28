@@ -35,19 +35,19 @@ export default function NFTMinter({
 
   const handleMintNFT = async () => {
     console.log("Mint button clicked");
-    
+
     if (!confirmationTime) {
       console.error("Missing confirmation time:", confirmationTime);
       return;
     }
-    
+
     if (!timeImageUrl) {
       console.error("Missing image URL");
       return;
     }
-    
+
     console.log("Attempting to mint NFT with time:", confirmationTime, "ms");
-    
+
     try {
       await mintNFT(confirmationTime, timeImageUrl);
     } catch (error) {
@@ -70,29 +70,11 @@ export default function NFTMinter({
         transition={{ duration: 0.3 }}
         className="text-2xl font-bold mb-6 text-green-700 dark:text-green-300 text-center"
       >
-        Mint Your Transaction Speed NFT
+        Mint Your Flashblocks NFT
       </motion.h3>
 
       {nftResult.status !== "success" ? (
         <div className="flex flex-col items-center">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-            className="flex items-center justify-center mb-6"
-          >
-            <div className="bg-white/80 dark:bg-gray-800/80 px-6 py-3 rounded-full shadow-md backdrop-blur-sm">
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-xl font-mono font-bold text-green-600 dark:text-green-400"
-              >
-                {confirmationTime}ms
-              </motion.span>
-            </div>
-          </motion.div>
-
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -122,7 +104,7 @@ export default function NFTMinter({
                 nftResult.status === "generating" ||
                 nftResult.status === "minting"
               }
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
             >
               {nftResult.status === "generating" ? (
                 <span className="flex items-center justify-center">
@@ -173,57 +155,9 @@ export default function NFTMinter({
                   Minting NFT...
                 </span>
               ) : (
-                "Mint Your Speed NFT"
+                "Mint"
               )}
             </motion.button>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white/80 dark:bg-gray-800/80 p-5 rounded-xl shadow backdrop-blur-sm border border-gray-100 dark:border-gray-700"
-            >
-              <h4 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">
-                What happens:
-              </h4>
-              <motion.ol className="list-decimal list-inside text-sm text-gray-600 dark:text-gray-400 space-y-3">
-                <motion.li
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="flex items-start"
-                >
-                  <span className="mr-2 text-green-600 dark:text-green-400 font-bold">
-                    1.
-                  </span>
-                  <span>
-                    Creates a unique image with your transaction speed
-                  </span>
-                </motion.li>
-                <motion.li
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex items-start"
-                >
-                  <span className="mr-2 text-green-600 dark:text-green-400 font-bold">
-                    2.
-                  </span>
-                  <span>Mints an NFT on Base Sepolia with this image</span>
-                </motion.li>
-                <motion.li
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.7 }}
-                  className="flex items-start"
-                >
-                  <span className="mr-2 text-green-600 dark:text-green-400 font-bold">
-                    3.
-                  </span>
-                  <span>Each mint creates a different visual design</span>
-                </motion.li>
-              </motion.ol>
-            </motion.div>
           </div>
         </div>
       ) : nftResult.imageUrl ? (
