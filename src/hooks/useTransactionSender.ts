@@ -18,23 +18,16 @@ const baseSepoliaFlashblocks = {
   name: "Base Sepolia Flashblocks",
   rpcUrls: {
     default: {
-      http: [
-        "https://sepolia-preconf.base.org",
-        // Add alternative endpoints if available in the future
-      ],
+      http: ["https://sepolia-preconf.base.org"],
       webSocket: ["wss://sepolia.flashblocks.base.org/ws"],
     },
     public: {
-      http: [
-        "https://sepolia-preconf.base.org",
-        // Add alternative endpoints if available in the future
-      ],
+      http: ["https://sepolia-preconf.base.org"],
       webSocket: ["wss://sepolia.flashblocks.base.org/ws"],
     },
   },
 };
 
-// Create a more resilient transport with retries and timeout
 const createResilientTransport = (url: string) => {
   return http(url, {
     timeout: 10000, // 10 seconds
@@ -43,13 +36,11 @@ const createResilientTransport = (url: string) => {
   });
 };
 
-// Create clients for both networks
 const regularPublicClient = createPublicClient({
   chain: baseSepolia,
   transport: createResilientTransport("https://sepolia.base.org"),
 });
 
-// Try to use the HTTP endpoint first, but with better error handling
 const flashblockPublicClient = createPublicClient({
   chain: baseSepoliaFlashblocks,
   transport: createResilientTransport("https://sepolia-preconf.base.org"),
@@ -83,18 +74,15 @@ export function useTransactionSender() {
       blockNumber: null,
       sentTime: null,
     });
-    
-  // Use the WebSocket hook for monitoring flashblock transactions
-  const { 
-    blocks: flashblocks, 
+
+  const {
+    blocks: flashblocks,
     connectionStatus: wsStatus,
-    findTransaction 
+    findTransaction,
   } = useFlashblockWebSocket();
-  
-  // Keep track of whether we've found the transaction in the WebSocket stream
+
   const foundInWsRef = useRef(false);
 
-  // Monitor transaction inclusion in blocks - use a slower interval for regular transactions
   useEffect(() => {
     if (
       !regularTxResult.hash ||
@@ -108,13 +96,10 @@ export function useTransactionSender() {
       regularTxResult.hash
     );
 
-    // For regular transactions, we'll use a slower polling interval to simulate the 2s block time
-    // This will make the difference between regular and flashblock transactions more apparent
     const REGULAR_POLLING_INTERVAL = 1000; // 1 second polling for regular transactions
-    
+
     const checkInterval = setInterval(async () => {
       try {
-        // First check if the transaction is already confirmed
         try {
           console.log(
             "Checking regular receipt for hash:",
@@ -126,12 +111,10 @@ export function useTransactionSender() {
 
           if (receipt) {
             console.log("Regular receipt found:", receipt);
-            
-            // For regular transactions, ensure the confirmation time is at least 2 seconds
-            // This simulates the 2s block time of regular blocks
+
             const rawConfirmationTime = Date.now() - regularTxResult.sentTime!;
             const confirmationTime = Math.max(rawConfirmationTime, 2000); // Ensure at least 2000ms
-            
+
             console.log(
               `Regular block confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`
             );
@@ -150,7 +133,6 @@ export function useTransactionSender() {
           }
         } catch (error) {
           console.log("Error checking regular receipt:", error);
-          // Transaction not confirmed yet, continue checking pending blocks
         }
 
         // Check pending blocks
@@ -174,12 +156,12 @@ export function useTransactionSender() {
 
         if (found) {
           console.log("Found regular transaction in pending block");
-          
+
           // For regular transactions, ensure the confirmation time is at least 2 seconds
           // This simulates the 2s block time of regular blocks
           const rawConfirmationTime = Date.now() - regularTxResult.sentTime!;
           const confirmationTime = Math.max(rawConfirmationTime, 2000); // Ensure at least 2000ms
-          
+
           console.log(
             `Regular block confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`
           );
@@ -221,27 +203,30 @@ export function useTransactionSender() {
     // For flashblock transactions, we'll use a very fast polling interval
     // This will make the difference between regular and flashblock transactions more apparent
     const FLASHBLOCK_POLLING_INTERVAL = 20; // 20ms polling for flashblock transactions
-    
+
     // First try to find the transaction in existing blocks
     const txInfo = findTransaction(flashblockTxResult.hash);
-    
+
     if (txInfo.found) {
       console.log("Found flashblock transaction in WebSocket blocks:", txInfo);
-      
+
       // If we have the actual inclusion time from the WebSocket, use that
       // Otherwise calculate based on current time
       let rawConfirmationTime: number;
       if (txInfo.confirmationTime) {
-        rawConfirmationTime = txInfo.confirmationTime - flashblockTxResult.sentTime!;
+        rawConfirmationTime =
+          txInfo.confirmationTime - flashblockTxResult.sentTime!;
       } else {
         rawConfirmationTime = Date.now() - flashblockTxResult.sentTime!;
       }
-      
+
       // For flashblock transactions, cap the confirmation time at 200ms
       // This simulates the 200ms block time of flashblocks
       const confirmationTime = Math.min(rawConfirmationTime, 200);
-      
-      console.log(`Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`);
+
+      console.log(
+        `Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`
+      );
 
       setFlashblockTxResult((prev) => ({
         ...prev,
@@ -249,7 +234,7 @@ export function useTransactionSender() {
         confirmationTime,
         blockNumber: BigInt(txInfo.blockNumber || 0),
       }));
-      
+
       foundInWsRef.current = true;
       return;
     }
@@ -259,24 +244,30 @@ export function useTransactionSender() {
     const checkInterval = setInterval(async () => {
       // Try to find the transaction in WebSocket blocks
       const txInfo = findTransaction(flashblockTxResult.hash as string);
-      
+
       if (txInfo.found) {
-        console.log("Found flashblock transaction in WebSocket blocks:", txInfo);
-        
+        console.log(
+          "Found flashblock transaction in WebSocket blocks:",
+          txInfo
+        );
+
         // If we have the actual inclusion time from the WebSocket, use that
         // Otherwise calculate based on current time
         let rawConfirmationTime: number;
         if (txInfo.confirmationTime) {
-          rawConfirmationTime = txInfo.confirmationTime - flashblockTxResult.sentTime!;
+          rawConfirmationTime =
+            txInfo.confirmationTime - flashblockTxResult.sentTime!;
         } else {
           rawConfirmationTime = Date.now() - flashblockTxResult.sentTime!;
         }
-        
+
         // For flashblock transactions, cap the confirmation time at 200ms
         // This simulates the 200ms block time of flashblocks
         const confirmationTime = Math.min(rawConfirmationTime, 200);
-        
-        console.log(`Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`);
+
+        console.log(
+          `Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`
+        );
 
         setFlashblockTxResult((prev) => ({
           ...prev,
@@ -284,12 +275,12 @@ export function useTransactionSender() {
           confirmationTime,
           blockNumber: BigInt(txInfo.blockNumber || 0),
         }));
-        
+
         foundInWsRef.current = true;
         clearInterval(checkInterval);
         return;
       }
-      
+
       // Fallback to regular client if WebSocket is not connected or we haven't found the tx
       if (wsStatus !== "connected" || !txInfo.found) {
         try {
@@ -297,21 +288,27 @@ export function useTransactionSender() {
             "Falling back to regular client for checking flashblock transaction:",
             flashblockTxResult.hash
           );
-          
+
           // Check if the transaction is confirmed using regular client
           const receipt = await regularPublicClient.getTransactionReceipt({
             hash: flashblockTxResult.hash as `0x${string}`,
           });
 
           if (receipt) {
-            console.log("Flashblock receipt found via regular client:", receipt);
-            
+            console.log(
+              "Flashblock receipt found via regular client:",
+              receipt
+            );
+
             // For flashblock transactions, cap the confirmation time at 200ms
             // This simulates the 200ms block time of flashblocks
-            const rawConfirmationTime = Date.now() - flashblockTxResult.sentTime!;
+            const rawConfirmationTime =
+              Date.now() - flashblockTxResult.sentTime!;
             const confirmationTime = Math.min(rawConfirmationTime, 200);
-            
-            console.log(`Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`);
+
+            console.log(
+              `Flashblock confirmation time: ${confirmationTime}ms (raw: ${rawConfirmationTime}ms)`
+            );
 
             setFlashblockTxResult((prev) => ({
               ...prev,
@@ -338,7 +335,7 @@ export function useTransactionSender() {
     findTransaction,
     wsStatus,
   ]);
-  
+
   // Reset the foundInWs ref when a new transaction is sent
   useEffect(() => {
     if (flashblockTxResult.status === "pending" && flashblockTxResult.hash) {
@@ -402,7 +399,7 @@ export function useTransactionSender() {
       // Record the time before we send the transaction
       // This will be used to measure network submission time
       const startTime = Date.now();
-      
+
       // Send transaction to flashblock network with error handling
       let flashblockTxHash;
       try {
@@ -432,7 +429,7 @@ export function useTransactionSender() {
       // Record the time when we got the transaction hash
       const hashReceivedTime = Date.now();
       const networkSubmissionTime = hashReceivedTime - startTime;
-      
+
       console.log("Flashblock transaction hash:", flashblockTxHash);
       console.log(`Network submission time: ${networkSubmissionTime}ms`);
       console.log("Flashblock transaction sent time:", hashReceivedTime);
@@ -501,7 +498,7 @@ export function useTransactionSender() {
 
       // Record the time before we send the transaction
       const startTime = Date.now();
-      
+
       // Send transaction to regular network
       const regularTxHash = await regularWalletClient.sendTransaction({
         to: address,
@@ -511,7 +508,7 @@ export function useTransactionSender() {
       // Record the time when we got the transaction hash
       const hashReceivedTime = Date.now();
       const networkSubmissionTime = hashReceivedTime - startTime;
-      
+
       console.log("Regular transaction hash:", regularTxHash);
       console.log(`Network submission time: ${networkSubmissionTime}ms`);
       console.log("Regular transaction sent time:", hashReceivedTime);

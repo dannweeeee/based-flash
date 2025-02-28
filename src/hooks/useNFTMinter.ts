@@ -9,7 +9,7 @@ import {
   http,
 } from "viem";
 import { baseSepolia } from "wagmi/chains";
-import { NFT_CONTRACT_ADDRESS } from "@/components/providers";
+import { NFT_CONTRACT_ADDRESS } from "@/constants";
 
 // Simple NFT contract ABI for minting
 const NFT_ABI = [
@@ -50,7 +50,7 @@ export function useNFTMinter() {
 
   const mintNFT = async (time: number, imageUrl: string) => {
     console.log("mintNFT called with time:", time, "ms");
-    
+
     if (typeof window === "undefined" || !window.ethereum) {
       console.error("MetaMask not available");
       setResult({

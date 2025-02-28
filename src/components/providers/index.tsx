@@ -22,7 +22,6 @@ const baseSepoliaFlashblocks = {
   },
 };
 
-// Create wagmi config with RainbowKit
 const config = getDefaultConfig({
   appName: "Based Flash",
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
@@ -33,10 +32,6 @@ const config = getDefaultConfig({
   },
   ssr: true,
 });
-
-// NFT Contract address
-export const NFT_CONTRACT_ADDRESS =
-  "0x413C323886e41B20Bb465105765E5F753fB79F92";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());

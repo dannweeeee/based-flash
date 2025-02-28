@@ -10,7 +10,6 @@ import TransactionResultCard from "./TransactionResultCard";
 import NFTMinter from "./NFTMinter";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Set up clients for full blocks and flashblocks
 const fullBlockClient = createPublicClient({
   chain: baseSepolia,
   transport: http("https://sepolia.base.org"),
@@ -21,7 +20,6 @@ const flashBlockClient = createPublicClient({
   transport: http("https://sepolia-preconf.base.org"),
 });
 
-// Define the transaction result interface
 interface TransactionResult {
   hash: `0x${string}` | null;
   status: "idle" | "pending" | "success" | "error";
@@ -37,7 +35,6 @@ export default function TransactionSender() {
   const [flashTime, setFlashTime] = useState<number | null>(null);
   const [fullTime, setFullTime] = useState<number | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  // Add a transaction counter to trigger NFT refresh
   const [transactionCounter, setTransactionCounter] = useState<number>(0);
 
   // Transaction results for the cards
@@ -60,7 +57,6 @@ export default function TransactionSender() {
       sentTime: null,
     });
 
-  // Wallet connection
   const { address, isConnected } = useAccount();
 
   // Monitor transaction inclusion in full blocks and flashblocks
@@ -106,15 +102,12 @@ export default function TransactionSender() {
       }
     }, 100); // Check more frequently for flashblocks
 
-    // Set a timeout to force the flashblock transaction to success after 3 seconds
-    // This ensures the user can still mint an NFT even if the transaction isn't detected in a flashblock
     flashTimeoutId = setTimeout(() => {
       if (flashblockTxResult.status === "pending") {
         console.log("Flashblock transaction timeout - forcing success");
         const now = Date.now();
         setFlashTime(now);
 
-        // Use a reasonable default for demo purposes
         const confirmationTime = 1170; // 1.17 seconds
 
         // Update flashblock transaction result for compatibility
@@ -123,7 +116,7 @@ export default function TransactionSender() {
           status: "success",
           error: null,
           confirmationTime,
-          blockNumber: BigInt(0), // Use 0 as we don't know the actual block number
+          blockNumber: BigInt(0), 
           sentTime,
         });
 
@@ -143,7 +136,7 @@ export default function TransactionSender() {
           setFullTime(now);
 
           // Calculate confirmation time
-          const confirmationTime = Math.max(now - sentTime, 2000); // Ensure at least 2000ms for demo
+          const confirmationTime = Math.max(now - sentTime, 2000);
 
           // Update regular transaction result for compatibility
           setRegularTxResult({
@@ -221,7 +214,6 @@ export default function TransactionSender() {
           Send Test Transaction
         </motion.h2>
 
-        {/* Replace custom connect button with RainbowKit ConnectButton */}
         <motion.div
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}

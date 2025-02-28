@@ -8,10 +8,8 @@ import TransactionSender from "../components/TransactionSender";
 import { Github } from "lucide-react";
 
 export default function Home() {
-  // Use state to track if we're on the client side
   const [isClient, setIsClient] = useState(false);
 
-  // Set isClient to true once the component mounts
   useEffect(() => {
     setIsClient(true);
   }, []);
