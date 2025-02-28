@@ -1,100 +1,199 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRegularBlockData, useFlashblockData } from "./hooks/useBlockData";
+import BlockInfo from "./components/BlockInfo";
+import TransactionSender from "./components/TransactionSender";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  // Use state to track if we're on the client side
+  const [isClient, setIsClient] = useState(false);
+  
+  // Set isClient to true once the component mounts
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  const { 
+    data: regularBlockData, 
+    isLoading: isRegularLoading, 
+    error: regularError 
+  } = useRegularBlockData();
+  
+  const { 
+    data: flashblockData, 
+    isLoading: isFlashblockLoading, 
+    error: flashblockError 
+  } = useFlashblockData();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+  return (
+    <div className="min-h-screen p-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
+      <header className="max-w-6xl mx-auto mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Image
+              src="https://base.org/images/logo.svg"
+              alt="Base logo"
+              width={40}
+              height={40}
+              priority
+            />
+            <h1 className="text-2xl md:text-3xl font-bold">Base Flashblocks NFT Minter</h1>
+          </div>
+          <div className="text-sm md:text-base text-gray-600 dark:text-gray-400 text-center md:text-right">
+            <p>ETH Denver 2025 - Builder Side Quest</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto">
+        <section className="mb-8">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-6 mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Mint Your Transaction Time as an NFT
+            </h2>
+            <p className="text-lg mb-4">
+              Experience the speed of Base Flashblocks (200ms) and mint your transaction time as a unique NFT!
+            </p>
+            <div className="flex flex-wrap gap-4 mt-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 flex-1 min-w-[200px]">
+                <h3 className="font-semibold">1. Send a Transaction</h3>
+                <p className="text-sm">Send a test transaction to the Flashblocks network</p>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 flex-1 min-w-[200px]">
+                <h3 className="font-semibold">2. See the Speed</h3>
+                <p className="text-sm">Experience 200ms confirmation times</p>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 flex-1 min-w-[200px]">
+                <h3 className="font-semibold">3. Mint Your NFT</h3>
+                <p className="text-sm">Create a unique NFT with your transaction time</p>
+              </div>
+            </div>
+          </div>
+          
+          <h2 className="text-xl md:text-2xl font-bold mb-4">
+            Comparing 2s Full Blocks vs 200ms Flashblocks
+          </h2>
+          <p className="mb-6 text-gray-700 dark:text-gray-300">
+            Base Flashblocks provides 10x faster block times (200ms) compared to regular blocks (2s).
+            Watch the blocks update in real-time below and see the difference!
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {isClient ? (
+              <>
+                <BlockInfo
+                  title="Regular Blocks (2s)"
+                  blockData={regularBlockData}
+                  isLoading={isRegularLoading}
+                  error={regularError as Error}
+                  refreshInterval={2000}
+                />
+                
+                <BlockInfo
+                  title="Flashblocks (200ms)"
+                  blockData={flashblockData}
+                  isLoading={isFlashblockLoading}
+                  error={flashblockError as Error}
+                  refreshInterval={200}
+                  className="border-blue-500 dark:border-blue-700"
+                />
+              </>
+            ) : (
+              <>
+                <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 h-[300px] md:h-[400px] flex items-center justify-center">
+                  <div className="animate-pulse flex flex-col items-center">
+                    <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                    <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border border-blue-500 dark:border-blue-700 p-6 h-[300px] md:h-[400px] flex items-center justify-center">
+                  <div className="animate-pulse flex flex-col items-center">
+                    <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                    <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+        
+        <section className="mb-8">
+          <h2 className="text-xl md:text-2xl font-bold mb-4">
+            Test Transaction Speed & Mint Your NFT
+          </h2>
+          <p className="mb-6 text-gray-700 dark:text-gray-300">
+            Send a test transaction to both networks simultaneously and compare how quickly they get confirmed.
+            Then, mint an NFT with your Flashblocks transaction time as a unique visual representation!
+          </p>
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-800 dark:text-blue-200">
+            <p className="font-semibold mb-1">How transaction speed is measured:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>You sign the transaction in your wallet</li>
+              <li>The timer starts when the transaction hash is received (after signing)</li>
+              <li>The timer stops when the transaction is included in a block</li>
+              <li>The difference is displayed as the transaction speed</li>
+            </ol>
+            <p className="mt-2 font-semibold">Expected results:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Regular blocks: ~2000ms (2 seconds)</li>
+              <li>Flashblocks: ~200ms (0.2 seconds)</li>
+            </ul>
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+              <p className="text-yellow-800 dark:text-yellow-200 text-xs">
+                <span className="font-semibold">Demo Mode:</span> For demonstration purposes, this app shows the theoretical block times rather than actual network latency, which can vary based on network conditions.
+              </p>
+            </div>
+          </div>
+          
+          {isClient ? (
+            <TransactionSender />
+          ) : (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 h-[300px] flex items-center justify-center">
+              <div className="animate-pulse flex flex-col items-center">
+                <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded mt-4"></div>
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+      
+      <footer className="max-w-6xl mx-auto mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400">
+        <p className="mb-2">
+          Built for ETH Denver 2025 - Base Flashblocks Builder Side Quest
+        </p>
+        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-4">
           <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://base.org/flashblocks"
             target="_blank"
             rel="noopener noreferrer"
+            className="hover:text-blue-600 dark:hover:text-blue-400"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
+            Flashblocks Docs
           </a>
           <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://github.com/base-org/flashblocks"
             target="_blank"
             rel="noopener noreferrer"
+            className="hover:text-blue-600 dark:hover:text-blue-400"
           >
-            Read our docs
+            GitHub
+          </a>
+          <a
+            href="https://twitter.com/buildonbase"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-blue-600 dark:hover:text-blue-400"
+          >
+            Twitter
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
       </footer>
     </div>
   );
