@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Base Flashblocks Demo",
+  title: "Based Flash",
   description: "Showcase the 10x speed improvement of Flashblocks on Base Sepolia",
 };
 
