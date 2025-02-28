@@ -1,9 +1,11 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createConfig, http, WagmiProvider } from "wagmi";
+import { http, WagmiProvider } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { ReactNode, useState } from "react";
+import '@rainbow-me/rainbowkit/styles.css';
+import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 
 // Create a custom chain for Base Sepolia Flashblocks
 const baseSepoliaFlashblocks = {
@@ -20,13 +22,16 @@ const baseSepoliaFlashblocks = {
   },
 };
 
-// Create wagmi config
-const config = createConfig({
+// Create wagmi config with RainbowKit
+const config = getDefaultConfig({
+  appName: 'Flash Base',
+  projectId: 'YOUR_PROJECT_ID', // Replace with your WalletConnect project ID
   chains: [baseSepolia, baseSepoliaFlashblocks],
   transports: {
     [baseSepolia.id]: http("https://sepolia.base.org"),
     [baseSepoliaFlashblocks.id]: http("https://sepolia-preconf.base.org"),
   },
+  ssr: true,
 });
 
 // NFT Contract address
@@ -38,7 +43,11 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          {children}
+        </RainbowKitProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { useAccount } from "wagmi";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { createPublicClient, http } from "viem";
 import { baseSepolia } from "wagmi/chains";
 import TransactionForm from "./TransactionForm";
@@ -62,8 +62,6 @@ export default function TransactionSender() {
 
   // Wallet connection
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
-  const { disconnect } = useDisconnect();
 
   // Monitor transaction inclusion in full blocks and flashblocks
   useEffect(() => {
@@ -174,14 +172,6 @@ export default function TransactionSender() {
     };
   }, [txHash, sentTime, flashblockTxResult.status]);
 
-  const handleConnect = () => {
-    connect({ connector: injected() });
-  };
-
-  const handleDisconnect = () => {
-    disconnect();
-  };
-
   // Handle transaction sent from the form
   const handleTransactionSent = (hash: `0x${string}`, time: number) => {
     setTxHash(hash);
@@ -231,40 +221,14 @@ export default function TransactionSender() {
           Send Test Transaction
         </motion.h2>
 
-        {isConnected ? (
-          <motion.div 
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm"
-          >
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="w-3 h-3 bg-green-500 rounded-full"
-            ></motion.div>
-            <span className="text-sm text-gray-500 dark:text-gray-300 truncate max-w-[120px] md:max-w-[200px]">
-              {address?.slice(0, 6)}...{address?.slice(-4)}
-            </span>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleDisconnect}
-              className="text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md transition-colors"
-            >
-              Disconnect
-            </motion.button>
-          </motion.div>
-        ) : (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleConnect}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors shadow-md hover:shadow-lg"
-          >
-            Connect Wallet
-          </motion.button>
-        )}
+        {/* Replace custom connect button with RainbowKit ConnectButton */}
+        <motion.div
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <ConnectButton />
+        </motion.div>
       </motion.div>
 
       <AnimatePresence>
