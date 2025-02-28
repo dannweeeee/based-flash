@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNFTMinter } from "../hooks/useNFTMinter";
 import TimeImage from "./TimeImage";
 import { motion } from "framer-motion";
@@ -8,25 +8,50 @@ import { motion } from "framer-motion";
 interface NFTMinterProps {
   flashTime: number | null;
   sentTime: number | null;
+  transactionCounter: number;
 }
 
-export default function NFTMinter({ flashTime, sentTime }: NFTMinterProps) {
+export default function NFTMinter({
+  flashTime,
+  sentTime,
+  transactionCounter,
+}: NFTMinterProps) {
   // Calculate the confirmation time (time difference)
   const confirmationTime = flashTime && sentTime ? flashTime - sentTime : null; // Actual time difference without capping
-  const { result: nftResult, mintNFT } = useNFTMinter();
+  const { result: nftResult, mintNFT, resetNFTState } = useNFTMinter();
   const [timeImageUrl, setTimeImageUrl] = useState<string | null>(null);
+
+  // Reset NFT state when a new transaction is sent
+  useEffect(() => {
+    if (transactionCounter > 0) {
+      setTimeImageUrl(null);
+      resetNFTState(); // Reset the NFT minter state
+    }
+  }, [transactionCounter]); // Only depend on transactionCounter, not resetNFTState
 
   const handleImageGenerated = (imageUrl: string) => {
     setTimeImageUrl(imageUrl);
   };
 
   const handleMintNFT = async () => {
-    if (confirmationTime && timeImageUrl) {
-      try {
-        await mintNFT(confirmationTime, timeImageUrl);
-      } catch (error) {
-        console.error("Error minting NFT:", error);
-      }
+    console.log("Mint button clicked");
+    
+    if (!confirmationTime) {
+      console.error("Missing confirmation time:", confirmationTime);
+      return;
+    }
+    
+    if (!timeImageUrl) {
+      console.error("Missing image URL");
+      return;
+    }
+    
+    console.log("Attempting to mint NFT with time:", confirmationTime, "ms");
+    
+    try {
+      await mintNFT(confirmationTime, timeImageUrl);
+    } catch (error) {
+      console.error("Error minting NFT:", error);
     }
   };
 
@@ -93,6 +118,7 @@ export default function NFTMinter({ flashTime, sentTime }: NFTMinterProps) {
               whileTap={{ scale: 0.97 }}
               onClick={handleMintNFT}
               disabled={
+                !timeImageUrl ||
                 nftResult.status === "generating" ||
                 nftResult.status === "minting"
               }

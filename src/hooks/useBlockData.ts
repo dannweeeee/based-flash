@@ -202,8 +202,6 @@ export function useFlashblockData(refreshInterval = 200) {
           const formattedTimestamp = date.toLocaleTimeString();
           const timeAgo = getTimeAgo(date);
 
-          console.log("Fetched flashblock data using regular client fallback");
-
           return {
             ...block,
             formattedTimestamp,

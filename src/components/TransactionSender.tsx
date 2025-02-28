@@ -37,6 +37,8 @@ export default function TransactionSender() {
   const [flashTime, setFlashTime] = useState<number | null>(null);
   const [fullTime, setFullTime] = useState<number | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  // Add a transaction counter to trigger NFT refresh
+  const [transactionCounter, setTransactionCounter] = useState<number>(0);
 
   // Transaction results for the cards
   const [regularTxResult, setRegularTxResult] = useState<TransactionResult>({
@@ -184,6 +186,8 @@ export default function TransactionSender() {
   const handleTransactionSent = (hash: `0x${string}`, time: number) => {
     setTxHash(hash);
     setSentTime(time);
+    // Increment transaction counter to trigger NFT refresh
+    setTransactionCounter(prev => prev + 1);
 
     // Reset transaction results
     setRegularTxResult({
@@ -361,7 +365,11 @@ export default function TransactionSender() {
             </motion.div>
 
             {/* NFT Minter */}
-            <NFTMinter flashTime={flashTime} sentTime={sentTime} />
+            <NFTMinter 
+              flashTime={flashTime} 
+              sentTime={sentTime} 
+              transactionCounter={transactionCounter} 
+            />
           </motion.div>
         ) : (
           <motion.div 

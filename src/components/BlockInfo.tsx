@@ -24,13 +24,17 @@ export default function BlockInfo({
   const [timeSinceLastBlock, setTimeSinceLastBlock] = useState<number>(0);
   const [blockCount, setBlockCount] = useState<number>(0);
 
+  // Store the previous block number to avoid infinite loops
+  const [prevBlockNumber, setPrevBlockNumber] = useState<bigint | undefined>(undefined);
+  
   useEffect(() => {
-    if (blockData) {
+    if (blockData && blockData.number !== prevBlockNumber) {
       setLastUpdated(new Date());
       setTimeSinceLastBlock(0);
       setBlockCount((prev) => prev + 1);
+      setPrevBlockNumber(blockData.number);
     }
-  }, [blockData?.number]);
+  }, [blockData, prevBlockNumber]);
 
   useEffect(() => {
     const interval = setInterval(() => {

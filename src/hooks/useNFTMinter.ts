@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   createWalletClient,
   custom,
@@ -32,17 +32,27 @@ export interface NFTMintResult {
 }
 
 export function useNFTMinter() {
-  const [result, setResult] = useState<NFTMintResult>({
+  const initialState: NFTMintResult = {
     status: "idle",
     error: null,
     tokenId: null,
     transactionHash: null,
     imageUrl: null,
     mintTime: null,
-  });
+  };
+
+  const [result, setResult] = useState<NFTMintResult>(initialState);
+
+  // Function to reset the NFT minter state
+  const resetNFTState = useCallback(() => {
+    setResult(initialState);
+  }, []);
 
   const mintNFT = async (time: number, imageUrl: string) => {
+    console.log("mintNFT called with time:", time, "ms");
+    
     if (typeof window === "undefined" || !window.ethereum) {
+      console.error("MetaMask not available");
       setResult({
         status: "error",
         error: new Error(
@@ -57,6 +67,7 @@ export function useNFTMinter() {
     }
 
     try {
+      console.log("Setting status to minting");
       setResult({
         status: "minting",
         error: null,
@@ -94,34 +105,42 @@ export function useNFTMinter() {
         JSON.stringify(metadata)
       )}`;
 
+      console.log("Requesting account access");
       // Request account access
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
+      console.log("Got accounts:", accounts);
       const account = accounts[0] as `0x${string}`;
 
+      console.log("Creating wallet client");
       // Create wallet client
       const walletClient = createWalletClient({
         account,
         chain: baseSepolia, // Use regular Base Sepolia instead of Flashblocks for NFT minting
         transport: custom(window.ethereum),
       });
+      console.log("Wallet client created");
 
+      console.log("Creating transaction data");
       // Create transaction data
       const data = encodeFunctionData({
         abi: NFT_ABI,
         functionName: "mintNFT",
         args: [metadataUrl],
       });
+      console.log("Transaction data created");
 
       const startTime = Date.now();
 
+      console.log("Sending transaction to contract:", NFT_CONTRACT_ADDRESS);
       // Send transaction
       const hash = await walletClient.sendTransaction({
         to: NFT_CONTRACT_ADDRESS as `0x${string}`,
         data,
         chain: baseSepolia, // Use regular Base Sepolia instead of Flashblocks for NFT minting
       });
+      console.log("Transaction sent with hash:", hash);
 
       // Create public client
       const publicClient = createPublicClient({
@@ -166,5 +185,6 @@ export function useNFTMinter() {
   return {
     result,
     mintNFT,
+    resetNFTState,
   };
 }

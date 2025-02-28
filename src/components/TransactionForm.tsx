@@ -9,7 +9,10 @@ interface TransactionFormProps {
   onTransactionSent: (hash: `0x${string}`, sentTime: number) => void;
 }
 
-export default function TransactionForm({ address, onTransactionSent }: TransactionFormProps) {
+export default function TransactionForm({
+  address,
+  onTransactionSent,
+}: TransactionFormProps) {
   // Fixed recipient address and amount
   const RECIPIENT_ADDRESS = address;
   const AMOUNT = "0.0001";
@@ -30,31 +33,31 @@ export default function TransactionForm({ address, onTransactionSent }: Transact
   // Handle sending a transaction to both networks
   const handleSendTransaction = () => {
     // Send a transaction to the user's own address or the fixed recipient
-    const recipient = RECIPIENT_ADDRESS ? 
-      (RECIPIENT_ADDRESS as `0x${string}`) : 
-      address;
-      
+    const recipient = RECIPIENT_ADDRESS
+      ? (RECIPIENT_ADDRESS as `0x${string}`)
+      : address;
+
     // Send transaction
     sendTransaction({
       to: recipient,
-      value: BigInt(Math.floor(parseFloat(AMOUNT) * 10**18)), // Convert to wei
+      value: BigInt(Math.floor(parseFloat(AMOUNT) * 10 ** 18)), // Convert to wei
     });
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.02 }}
           transition={{ type: "spring", stiffness: 300 }}
           className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg shadow-sm"
@@ -74,7 +77,7 @@ export default function TransactionForm({ address, onTransactionSent }: Transact
           />
         </motion.div>
 
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.02 }}
           transition={{ type: "spring", stiffness: 300 }}
           className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg shadow-sm"
@@ -95,7 +98,7 @@ export default function TransactionForm({ address, onTransactionSent }: Transact
         </motion.div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
@@ -118,32 +121,51 @@ export default function TransactionForm({ address, onTransactionSent }: Transact
                 transition={{ repeat: Infinity, duration: 1.5 }}
                 className="flex items-center justify-center"
               >
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Sending Transaction...
               </motion.span>
-            ) : "Send Test Transaction"}
+            ) : (
+              "Send Test Transaction"
+            )}
           </motion.button>
         </div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800"
         >
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
             className="text-sm text-center text-blue-800 dark:text-blue-200"
           >
-            This will send one transaction and monitor how quickly it's included in both networks
+            This will send one transaction and monitor how quickly it's included
+            in both networks
           </motion.p>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
@@ -152,10 +174,6 @@ export default function TransactionForm({ address, onTransactionSent }: Transact
             <p>
               Note: Actual transaction speeds may vary based on network
               conditions.
-            </p>
-            <p>
-              Flashblocks should be approximately 10x faster than regular
-              blocks.
             </p>
           </motion.div>
         </motion.div>
