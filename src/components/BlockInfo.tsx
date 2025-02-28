@@ -19,16 +19,12 @@ const BlockContent = memo(({ blockData }: { blockData: BlockData }) => {
       <div className="grid grid-cols-2 gap-4">
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">Time</div>
-          <div className="font-medium">
-            {blockData.formattedTimestamp}
-          </div>
+          <div className="font-medium">{blockData.formattedTimestamp}</div>
         </div>
 
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">Transactions</div>
-          <div className="font-medium">
-            {blockData.transactions.length}
-          </div>
+          <div className="font-medium">{blockData.transactions.length}</div>
         </div>
 
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -63,44 +59,46 @@ const BlockContent = memo(({ blockData }: { blockData: BlockData }) => {
 BlockContent.displayName = "BlockContent";
 
 // Memoized progress bar component
-const ProgressBar = memo(({ 
-  progressPercentage, 
-  isFlashblock, 
-  refreshInterval, 
-  timeSinceLastBlock 
-}: { 
-  progressPercentage: number, 
-  isFlashblock: boolean,
-  refreshInterval: number,
-  timeSinceLastBlock: number
-}) => {
-  return (
-    <div className="mt-4">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-xs text-gray-500">Next block in</span>
-        <span
-          className={`text-sm font-medium ${
-            isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
-          }`}
-        >
-          {Math.max(
-            0,
-            Math.floor((refreshInterval - timeSinceLastBlock) / 100) / 10
-          ).toFixed(1)}
-          s
-        </span>
+const ProgressBar = memo(
+  ({
+    progressPercentage,
+    isFlashblock,
+    refreshInterval,
+    timeSinceLastBlock,
+  }: {
+    progressPercentage: number;
+    isFlashblock: boolean;
+    refreshInterval: number;
+    timeSinceLastBlock: number;
+  }) => {
+    return (
+      <div className="mt-4">
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-xs text-gray-500">Next block in</span>
+          <span
+            className={`text-sm font-medium ${
+              isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+            }`}
+          >
+            {Math.max(
+              0,
+              Math.floor((refreshInterval - timeSinceLastBlock) / 100) / 10
+            ).toFixed(1)}
+            s
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+          <div
+            className={`${
+              isFlashblock ? "bg-blue-600" : "bg-gray-600"
+            } h-2.5 rounded-full transition-all duration-100 ease-linear`}
+            style={{ width: `${progressPercentage}%` }}
+          ></div>
+        </div>
       </div>
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-        <div
-          className={`${
-            isFlashblock ? "bg-blue-600" : "bg-gray-600"
-          } h-2.5 rounded-full transition-all duration-100 ease-linear`}
-          style={{ width: `${progressPercentage}%` }}
-        ></div>
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 ProgressBar.displayName = "ProgressBar";
 
@@ -121,57 +119,78 @@ function BlockInfo({
 
   // Memoize computed values
   const isFlashblock = useMemo(() => refreshInterval < 1000, [refreshInterval]);
-  
-  const progressPercentage = useMemo(() => 
-    Math.min((timeSinceLastBlock / refreshInterval) * 100, 100),
+
+  const progressPercentage = useMemo(
+    () => Math.min((timeSinceLastBlock / refreshInterval) * 100, 100),
     [timeSinceLastBlock, refreshInterval]
   );
 
-  // Update block data without causing full re-renders
+  // Update block data without causing full re-renders or scroll jumps
   useEffect(() => {
     if (blockData && blockData.number !== prevBlockNumberRef.current) {
+      // Save scroll position before update
+      const scrollPosition = window.scrollY;
+      
       prevBlockNumberRef.current = blockData.number;
       setLastUpdated(new Date());
       setTimeSinceLastBlock(0);
       setBlockCount((prev) => prev + 1);
+      
+      // Restore scroll position after update
+      window.scrollTo({
+        top: scrollPosition,
+        behavior: 'auto' // Use 'auto' instead of 'smooth' to avoid animation
+      });
     }
   }, [blockData]);
 
-  // Timer effect
+  // Timer effect with scroll position preservation
   useEffect(() => {
     const interval = setInterval(() => {
+      // Save scroll position before update
+      const scrollPosition = window.scrollY;
+      
       setTimeSinceLastBlock((prev) => prev + 100);
+      
+      // Restore scroll position after update
+      window.scrollTo({
+        top: scrollPosition,
+        behavior: 'auto' // Use 'auto' instead of 'smooth' to avoid animation
+      });
     }, 100);
 
     return () => clearInterval(interval);
   }, []);
 
   // Memoize the header content
-  const headerContent = useMemo(() => (
-    <div className="flex justify-between items-center mb-4">
-      <div>
-        <h2
-          className={`text-xl font-bold ${
-            isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+  const headerContent = useMemo(
+    () => (
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2
+            className={`text-xl font-bold ${
+              isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+            }`}
+          >
+            {title}
+          </h2>
+          <div className="text-xs text-gray-500 mt-1">
+            {blockCount > 0 && `${blockCount} blocks observed`}
+          </div>
+        </div>
+        <div
+          className={`text-sm ${
+            isFlashblock
+              ? "text-blue-600 dark:text-blue-400 font-semibold"
+              : "text-gray-500"
           }`}
         >
-          {title}
-        </h2>
-        <div className="text-xs text-gray-500 mt-1">
-          {blockCount > 0 && `${blockCount} blocks observed`}
+          {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
         </div>
       </div>
-      <div
-        className={`text-sm ${
-          isFlashblock
-            ? "text-blue-600 dark:text-blue-400 font-semibold"
-            : "text-gray-500"
-        }`}
-      >
-        {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
-      </div>
-    </div>
-  ), [title, isFlashblock, blockCount, blockData]);
+    ),
+    [title, isFlashblock, blockCount, blockData]
+  );
 
   return (
     <div
@@ -180,6 +199,7 @@ function BlockInfo({
           ? "border-blue-500 dark:border-blue-700"
           : "border-gray-200 dark:border-gray-800"
       } p-6 ${className} relative overflow-hidden`}
+      style={{ minHeight: blockData ? '350px' : 'auto' }} // Add fixed height to prevent layout shifts
     >
       {/* Background pattern for flashblocks */}
       {isFlashblock && (
@@ -215,9 +235,9 @@ function BlockInfo({
         ) : blockData ? (
           <>
             <BlockContent blockData={blockData} />
-            <ProgressBar 
-              progressPercentage={progressPercentage} 
-              isFlashblock={isFlashblock} 
+            <ProgressBar
+              progressPercentage={progressPercentage}
+              isFlashblock={isFlashblock}
               refreshInterval={refreshInterval}
               timeSinceLastBlock={timeSinceLastBlock}
             />
