@@ -161,7 +161,7 @@ export default function Home() {
         </p>
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-4">
           <a
-            href="https://github.com/dannweeeee/flash-base"
+            href="https://github.com/dannweeeee/based-flash"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"

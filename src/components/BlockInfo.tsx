@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef, memo } from "react";
 import { BlockData } from "@/hooks/useBlockData";
 
 interface BlockInfoProps {
@@ -12,7 +12,99 @@ interface BlockInfoProps {
   className?: string;
 }
 
-export default function BlockInfo({
+// Memoized component for block data display to prevent re-renders
+const BlockContent = memo(({ blockData }: { blockData: BlockData }) => {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-xs text-gray-500 mb-1">Time</div>
+          <div className="font-medium">
+            {blockData.formattedTimestamp}
+          </div>
+        </div>
+
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-xs text-gray-500 mb-1">Transactions</div>
+          <div className="font-medium">
+            {blockData.transactions.length}
+          </div>
+        </div>
+
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-xs text-gray-500 mb-1">Gas Used</div>
+          <div className="font-medium">
+            {Number(blockData.gasUsed).toLocaleString()}
+          </div>
+        </div>
+
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-xs text-gray-500 mb-1">Age</div>
+          <div className="font-medium">{blockData.timeAgo}</div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <span className="text-xs text-gray-500">Block Hash</span>
+        <a
+          href={`https://sepolia.basescan.org/block/${blockData.number}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-600 hover:underline truncate max-w-[200px]"
+          title={blockData.hash}
+        >
+          {blockData.hash.slice(0, 10)}...{blockData.hash.slice(-8)}
+        </a>
+      </div>
+    </div>
+  );
+});
+
+BlockContent.displayName = "BlockContent";
+
+// Memoized progress bar component
+const ProgressBar = memo(({ 
+  progressPercentage, 
+  isFlashblock, 
+  refreshInterval, 
+  timeSinceLastBlock 
+}: { 
+  progressPercentage: number, 
+  isFlashblock: boolean,
+  refreshInterval: number,
+  timeSinceLastBlock: number
+}) => {
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-xs text-gray-500">Next block in</span>
+        <span
+          className={`text-sm font-medium ${
+            isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+          }`}
+        >
+          {Math.max(
+            0,
+            Math.floor((refreshInterval - timeSinceLastBlock) / 100) / 10
+          ).toFixed(1)}
+          s
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+        <div
+          className={`${
+            isFlashblock ? "bg-blue-600" : "bg-gray-600"
+          } h-2.5 rounded-full transition-all duration-100 ease-linear`}
+          style={{ width: `${progressPercentage}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+});
+
+ProgressBar.displayName = "ProgressBar";
+
+function BlockInfo({
   title,
   blockData,
   isLoading,
@@ -24,18 +116,28 @@ export default function BlockInfo({
   const [timeSinceLastBlock, setTimeSinceLastBlock] = useState<number>(0);
   const [blockCount, setBlockCount] = useState<number>(0);
 
-  // Store the previous block number to avoid infinite loops
-  const [prevBlockNumber, setPrevBlockNumber] = useState<bigint | undefined>(undefined);
+  // Use ref instead of state for previous block number to avoid re-renders
+  const prevBlockNumberRef = useRef<bigint | undefined>(undefined);
+
+  // Memoize computed values
+  const isFlashblock = useMemo(() => refreshInterval < 1000, [refreshInterval]);
   
+  const progressPercentage = useMemo(() => 
+    Math.min((timeSinceLastBlock / refreshInterval) * 100, 100),
+    [timeSinceLastBlock, refreshInterval]
+  );
+
+  // Update block data without causing full re-renders
   useEffect(() => {
-    if (blockData && blockData.number !== prevBlockNumber) {
+    if (blockData && blockData.number !== prevBlockNumberRef.current) {
+      prevBlockNumberRef.current = blockData.number;
       setLastUpdated(new Date());
       setTimeSinceLastBlock(0);
       setBlockCount((prev) => prev + 1);
-      setPrevBlockNumber(blockData.number);
     }
-  }, [blockData, prevBlockNumber]);
+  }, [blockData]);
 
+  // Timer effect
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeSinceLastBlock((prev) => prev + 100);
@@ -44,11 +146,32 @@ export default function BlockInfo({
     return () => clearInterval(interval);
   }, []);
 
-  const progressPercentage = Math.min(
-    (timeSinceLastBlock / refreshInterval) * 100,
-    100
-  );
-  const isFlashblock = refreshInterval < 1000;
+  // Memoize the header content
+  const headerContent = useMemo(() => (
+    <div className="flex justify-between items-center mb-4">
+      <div>
+        <h2
+          className={`text-xl font-bold ${
+            isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
+          }`}
+        >
+          {title}
+        </h2>
+        <div className="text-xs text-gray-500 mt-1">
+          {blockCount > 0 && `${blockCount} blocks observed`}
+        </div>
+      </div>
+      <div
+        className={`text-sm ${
+          isFlashblock
+            ? "text-blue-600 dark:text-blue-400 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
+      </div>
+    </div>
+  ), [title, isFlashblock, blockCount, blockData]);
 
   return (
     <div
@@ -75,29 +198,7 @@ export default function BlockInfo({
 
       {/* Content */}
       <div className="relative z-10">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2
-              className={`text-xl font-bold ${
-                isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
-              }`}
-            >
-              {title}
-            </h2>
-            <div className="text-xs text-gray-500 mt-1">
-              {blockCount > 0 && `${blockCount} blocks observed`}
-            </div>
-          </div>
-          <div
-            className={`text-sm ${
-              isFlashblock
-                ? "text-blue-600 dark:text-blue-400 font-semibold"
-                : "text-gray-500"
-            }`}
-          >
-            {blockData ? `Block #${blockData.number.toString()}` : "Loading..."}
-          </div>
-        </div>
+        {headerContent}
 
         {isLoading && !blockData ? (
           <div className="flex justify-center items-center h-40">
@@ -112,74 +213,15 @@ export default function BlockInfo({
             Error: {error.message}
           </div>
         ) : blockData ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Time</div>
-                <div className="font-medium">
-                  {blockData.formattedTimestamp}
-                </div>
-              </div>
-
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Transactions</div>
-                <div className="font-medium">
-                  {blockData.transactions.length}
-                </div>
-              </div>
-
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Gas Used</div>
-                <div className="font-medium">
-                  {Number(blockData.gasUsed).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Age</div>
-                <div className="font-medium">{blockData.timeAgo}</div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">Block Hash</span>
-              <a
-                href={`https://sepolia.basescan.org/block/${blockData.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:underline truncate max-w-[200px]"
-                title={blockData.hash}
-              >
-                {blockData.hash.slice(0, 10)}...{blockData.hash.slice(-8)}
-              </a>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-xs text-gray-500">Next block in</span>
-                <span
-                  className={`text-sm font-medium ${
-                    isFlashblock ? "text-blue-600 dark:text-blue-400" : ""
-                  }`}
-                >
-                  {Math.max(
-                    0,
-                    Math.floor((refreshInterval - timeSinceLastBlock) / 100) /
-                      10
-                  ).toFixed(1)}
-                  s
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className={`${
-                    isFlashblock ? "bg-blue-600" : "bg-gray-600"
-                  } h-2.5 rounded-full transition-all duration-100 ease-linear`}
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
+          <>
+            <BlockContent blockData={blockData} />
+            <ProgressBar 
+              progressPercentage={progressPercentage} 
+              isFlashblock={isFlashblock} 
+              refreshInterval={refreshInterval}
+              timeSinceLastBlock={timeSinceLastBlock}
+            />
+          </>
         ) : (
           <div className="text-center p-4">No data available</div>
         )}
@@ -187,3 +229,6 @@ export default function BlockInfo({
     </div>
   );
 }
+
+// Wrap the entire component with memo to prevent unnecessary re-renders
+export default memo(BlockInfo);
