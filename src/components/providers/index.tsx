@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, WagmiProvider } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { ReactNode, useState } from "react";
-import '@rainbow-me/rainbowkit/styles.css';
-import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import "@rainbow-me/rainbowkit/styles.css";
+import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 
 // Create a custom chain for Base Sepolia Flashblocks
 const baseSepoliaFlashblocks = {
@@ -24,8 +24,8 @@ const baseSepoliaFlashblocks = {
 
 // Create wagmi config with RainbowKit
 const config = getDefaultConfig({
-  appName: 'Flash Base',
-  projectId: 'YOUR_PROJECT_ID', // Replace with your WalletConnect project ID
+  appName: "Based Flash",
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
   chains: [baseSepolia, baseSepoliaFlashblocks],
   transports: {
     [baseSepolia.id]: http("https://sepolia.base.org"),
@@ -44,9 +44,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          {children}
-        </RainbowKitProvider>
+        <RainbowKitProvider>{children}</RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
